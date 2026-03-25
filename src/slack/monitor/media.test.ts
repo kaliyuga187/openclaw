@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as ssrf from "../../infra/net/ssrf.js";
+import * as mediaStore from "../../media/store.js";
+import { resolveSlackMedia } from "./media.js";
+
+// Hoist store mock so resolveSlackMedia's static import of saveMediaBuffer is intercepted.
+vi.mock("../../media/store.js");
 
 // Store original fetch
 const originalFetch = globalThis.fetch;
@@ -172,6 +177,7 @@ describe("resolveSlackMedia", () => {
   beforeEach(() => {
     mockFetch = vi.fn();
     globalThis.fetch = mockFetch as typeof fetch;
+    // Stub DNS resolution to avoid live lookups when the SSRF guard runs.
     vi.spyOn(ssrf, "resolvePinnedHostname").mockImplementation(async (hostname) => {
       const normalized = hostname.trim().toLowerCase().replace(/\.$/, "");
       const addresses = ["93.184.216.34"];
@@ -181,25 +187,21 @@ describe("resolveSlackMedia", () => {
         lookup: ssrf.createPinnedLookup({ hostname: normalized, addresses }),
       };
     });
+    // Default saveMediaBuffer to a successful save so tests can focus on fetch behaviour.
+    vi.mocked(mediaStore.saveMediaBuffer).mockResolvedValue({
+      id: "test-id",
+      path: "/tmp/test.jpg",
+      size: 100,
+      contentType: "image/jpeg",
+    });
   });
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
-    vi.resetModules();
     vi.restoreAllMocks();
   });
 
   it("prefers url_private_download over url_private", async () => {
-    // Mock the store module
-    vi.doMock("../../media/store.js", () => ({
-      saveMediaBuffer: vi.fn().mockResolvedValue({
-        path: "/tmp/test.jpg",
-        contentType: "image/jpeg",
-      }),
-    }));
-
-    const { resolveSlackMedia } = await import("./media.js");
-
     const mockResponse = new Response(Buffer.from("image data"), {
       status: 200,
       headers: { "content-type": "image/jpeg" },
@@ -225,8 +227,6 @@ describe("resolveSlackMedia", () => {
   });
 
   it("returns null when download fails", async () => {
-    const { resolveSlackMedia } = await import("./media.js");
-
     // Simulate a network error
     mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
@@ -240,8 +240,6 @@ describe("resolveSlackMedia", () => {
   });
 
   it("returns null when no files are provided", async () => {
-    const { resolveSlackMedia } = await import("./media.js");
-
     const result = await resolveSlackMedia({
       files: [],
       token: "xoxb-test-token",
@@ -252,8 +250,6 @@ describe("resolveSlackMedia", () => {
   });
 
   it("skips files without url_private", async () => {
-    const { resolveSlackMedia } = await import("./media.js");
-
     const result = await resolveSlackMedia({
       files: [{ name: "test.jpg" }], // No url_private
       token: "xoxb-test-token",
@@ -265,16 +261,6 @@ describe("resolveSlackMedia", () => {
   });
 
   it("falls through to next file when first file returns error", async () => {
-    // Mock the store module
-    vi.doMock("../../media/store.js", () => ({
-      saveMediaBuffer: vi.fn().mockResolvedValue({
-        path: "/tmp/test.jpg",
-        contentType: "image/jpeg",
-      }),
-    }));
-
-    const { resolveSlackMedia } = await import("./media.js");
-
     // First file: 404
     const errorResponse = new Response("Not Found", { status: 404 });
     // Second file: success
