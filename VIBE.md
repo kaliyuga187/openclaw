@@ -22,21 +22,21 @@ openclaw/
 
 ## WHAT DOES WHAT — 60 SECOND TOUR
 
-| Area | What it does | Touch it when... |
-|------|-------------|-----------------|
-| `src/cli/program.ts` | Wires ALL CLI commands together | Adding a new `openclaw foo` command |
-| `src/commands/agent.ts` | The AI agent — talks to Claude/OpenAI | Changing how the AI responds |
-| `src/commands/onboard.ts` | First-run wizard | Touching setup/install flow |
-| `src/commands/channels.ts` | WhatsApp, Telegram, etc. management | Adding/fixing a channel |
-| `src/commands/gateway-status.ts` | Gateway health checking | Debugging connection issues |
-| `src/commands/doctor.ts` | Diagnostics — the "what's broken" command | Debugging user problems |
-| `src/commands/models.ts` | Model selection (Claude, GPT, etc.) | Changing model behavior |
-| `src/commands/status.ts` | Status dashboard | Changing what `openclaw status` shows |
-| `src/commands/configure.ts` | Config wizard | Touching user config |
-| `src/routing/` | Message routing logic | Changing how messages get to the right channel |
-| `src/providers/` | AI provider adapters | Adding a new AI provider |
-| `src/infra/` | Config, env, storage, deps | Core infrastructure changes |
-| `extensions/` | Channel plugins (Teams, Matrix, etc.) | Adding/fixing channel integrations |
+| Area                             | What it does                              | Touch it when...                               |
+| -------------------------------- | ----------------------------------------- | ---------------------------------------------- |
+| `src/cli/program.ts`             | Wires ALL CLI commands together           | Adding a new `openclaw foo` command            |
+| `src/commands/agent.ts`          | The AI agent — talks to Claude/OpenAI     | Changing how the AI responds                   |
+| `src/commands/onboard.ts`        | First-run wizard                          | Touching setup/install flow                    |
+| `src/commands/channels.ts`       | WhatsApp, Telegram, etc. management       | Adding/fixing a channel                        |
+| `src/commands/gateway-status.ts` | Gateway health checking                   | Debugging connection issues                    |
+| `src/commands/doctor.ts`         | Diagnostics — the "what's broken" command | Debugging user problems                        |
+| `src/commands/models.ts`         | Model selection (Claude, GPT, etc.)       | Changing model behavior                        |
+| `src/commands/status.ts`         | Status dashboard                          | Changing what `openclaw status` shows          |
+| `src/commands/configure.ts`      | Config wizard                             | Touching user config                           |
+| `src/routing/`                   | Message routing logic                     | Changing how messages get to the right channel |
+| `src/providers/`                 | AI provider adapters                      | Adding a new AI provider                       |
+| `src/infra/`                     | Config, env, storage, deps                | Core infrastructure changes                    |
+| `extensions/`                    | Channel plugins (Teams, Matrix, etc.)     | Adding/fixing channel integrations             |
 
 ---
 
@@ -50,7 +50,7 @@ src/commands/my-feature.ts
 
 ```typescript
 // src/commands/my-feature.ts
-import type { Command } from "commander"
+import type { Command } from "commander";
 
 export function registerMyFeature(program: Command) {
   program
@@ -58,8 +58,8 @@ export function registerMyFeature(program: Command) {
     .description("Does the thing")
     .option("--verbose", "More output")
     .action(async (opts) => {
-      console.log("doing the thing")
-    })
+      console.log("doing the thing");
+    });
 }
 ```
 
@@ -71,8 +71,8 @@ src/cli/program/register.my-feature.ts
 
 ```typescript
 // src/cli/program/register.my-feature.ts
-import type { Command } from "commander"
-import { myFeatureCommand } from "../../commands/my-feature.js"
+import type { Command } from "commander";
+import { myFeatureCommand } from "../../commands/my-feature.js";
 
 export function registerMyFeatureCommand(program: Command) {
   program
@@ -80,8 +80,8 @@ export function registerMyFeatureCommand(program: Command) {
     .description("Does the thing")
     .option("--verbose", "More output")
     .action(async (opts) => {
-      await myFeatureCommand(opts)
-    })
+      await myFeatureCommand(opts);
+    });
 }
 ```
 
@@ -119,6 +119,7 @@ git push
 The `src/commands/` folder has 185 files. They break down into these domains:
 
 ### Agent / AI Core
+
 ```
 agent.ts              — main agent command (this is the product)
 agent-via-gateway.ts  — agent running through the gateway
@@ -126,6 +127,7 @@ agents.ts             — multi-agent management
 ```
 
 ### Authentication
+
 ```
 auth-choice*.ts       — auth flow for different providers (Claude, OpenAI, etc.)
 auth-token.ts         — token management
@@ -133,6 +135,7 @@ oauth-flow.ts         — OAuth dance
 ```
 
 ### Channels (WhatsApp, Telegram, Slack...)
+
 ```
 channels.ts           — channel listing and management
 configure.channels.ts — channel configuration
@@ -140,6 +143,7 @@ signal-install.ts     — Signal setup
 ```
 
 ### Onboarding (First Run)
+
 ```
 onboard.ts            — main wizard
 onboard-auth.ts       — auth step
@@ -149,6 +153,7 @@ onboard-skills.ts     — skills setup step
 ```
 
 ### Doctor / Diagnostics
+
 ```
 doctor.ts             — main doctor command
 doctor-auth.ts        — auth health
@@ -157,6 +162,7 @@ doctor-workspace.ts   — workspace health
 ```
 
 ### Models
+
 ```
 models.ts             — model management
 model-picker.ts       — UI for picking models
@@ -165,6 +171,7 @@ model-allowlist.ts    — model allow/deny lists
 ```
 
 ### Status / Health
+
 ```
 status.ts             — status command
 status-all.ts         — deep status
@@ -173,6 +180,7 @@ gateway-status.ts     — gateway connection status
 ```
 
 ### Gateway / Daemon
+
 ```
 daemon-runtime.ts     — daemon lifecycle
 daemon-install-helpers.ts — install helpers
@@ -180,6 +188,7 @@ configure.gateway.ts  — gateway config
 ```
 
 ### Config / Setup
+
 ```
 configure.ts          — main config command
 configure.wizard.ts   — config wizard
@@ -213,6 +222,7 @@ User gets reply
 ## CHANNELS LIST (all the places messages come from)
 
 **Built-in (core):**
+
 - WhatsApp (`src/whatsapp/`, `src/web/`)
 - Telegram (`src/telegram/`)
 - Slack (`src/slack/`)
@@ -222,6 +232,7 @@ User gets reply
 - Web chat (`src/channel-web.ts`)
 
 **Extensions (plugins in `extensions/`):**
+
 - Microsoft Teams (`extensions/msteams/`)
 - Matrix (`extensions/matrix/`)
 - Zalo (`extensions/zalo/`)
@@ -313,5 +324,5 @@ CHANGELOG.md                           ← Project history
 
 ---
 
-*This file exists because codebases should have maps.
-If you added something and it's not here, add it here. Future you will thank you.*
+_This file exists because codebases should have maps.
+If you added something and it's not here, add it here. Future you will thank you._

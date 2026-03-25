@@ -4,20 +4,20 @@
 
 ## Quick Jump
 
-| Domain | Files | Entry Point |
-|--------|-------|-------------|
-| [Agent / AI](#agent--ai) | `agent*.ts`, `agents*.ts` | `agent.ts` |
-| [Authentication](#authentication) | `auth-choice*.ts`, `auth-token.ts`, `oauth*.ts` | `auth-choice.ts` |
-| [Channels](#channels) | `channels*.ts`, `signal-install.ts` | `channels.ts` |
-| [Configure](#configure) | `configure*.ts` | `configure.ts` |
-| [Daemon / Gateway](#daemon--gateway) | `daemon*.ts`, `gateway-status*.ts` | `daemon-runtime.ts` |
-| [Doctor / Diagnostics](#doctor--diagnostics) | `doctor*.ts` | `doctor.ts` |
-| [Models](#models) | `models*.ts`, `model-*.ts`, `*-model-default.ts` | `models.ts` |
-| [Onboarding](#onboarding) | `onboard*.ts` | `onboard.ts` |
-| [Sandbox](#sandbox) | `sandbox*.ts` | `sandbox.ts` |
-| [Sessions](#sessions) | `sessions*.ts` | `sessions.ts` |
-| [Status / Health](#status--health) | `status*.ts`, `health*.ts`, `dashboard*.ts` | `status.ts` |
-| [Setup / Maintenance](#setup--maintenance) | `setup.ts`, `reset.ts`, `uninstall.ts`, `cleanup-utils.ts` | `setup.ts` |
+| Domain                                       | Files                                                      | Entry Point         |
+| -------------------------------------------- | ---------------------------------------------------------- | ------------------- |
+| [Agent / AI](#agent--ai)                     | `agent*.ts`, `agents*.ts`                                  | `agent.ts`          |
+| [Authentication](#authentication)            | `auth-choice*.ts`, `auth-token.ts`, `oauth*.ts`            | `auth-choice.ts`    |
+| [Channels](#channels)                        | `channels*.ts`, `signal-install.ts`                        | `channels.ts`       |
+| [Configure](#configure)                      | `configure*.ts`                                            | `configure.ts`      |
+| [Daemon / Gateway](#daemon--gateway)         | `daemon*.ts`, `gateway-status*.ts`                         | `daemon-runtime.ts` |
+| [Doctor / Diagnostics](#doctor--diagnostics) | `doctor*.ts`                                               | `doctor.ts`         |
+| [Models](#models)                            | `models*.ts`, `model-*.ts`, `*-model-default.ts`           | `models.ts`         |
+| [Onboarding](#onboarding)                    | `onboard*.ts`                                              | `onboard.ts`        |
+| [Sandbox](#sandbox)                          | `sandbox*.ts`                                              | `sandbox.ts`        |
+| [Sessions](#sessions)                        | `sessions*.ts`                                             | `sessions.ts`       |
+| [Status / Health](#status--health)           | `status*.ts`, `health*.ts`, `dashboard*.ts`                | `status.ts`         |
+| [Setup / Maintenance](#setup--maintenance)   | `setup.ts`, `reset.ts`, `uninstall.ts`, `cleanup-utils.ts` | `setup.ts`          |
 
 ---
 
@@ -88,6 +88,7 @@ configure.channels.ts       ← config wizard step for channels
 ```
 
 Channel-specific code lives in `src/<channel>/` (not commands):
+
 - `src/whatsapp/`, `src/telegram/`, `src/slack/`, `src/discord/`
 - `src/signal/`, `src/imessage/`, `src/web/`
 - Extensions: `extensions/msteams/`, `extensions/matrix/`, `extensions/zalo/`
@@ -282,4 +283,4 @@ daemon-install-helpers.ts   ← install helpers (used by onboard + setup)
 
 ---
 
-*Adding a new file? Put it in the right domain and update this table.*
+_Adding a new file? Put it in the right domain and update this table._
