@@ -202,12 +202,23 @@ def analyze_crypto_market(market: dict) -> dict | None:
 
     if threshold:
         daily_vol = estimate_daily_volatility(binance)
+        # Use actual days to expiry from market data rather than a fixed 30-day assumption
+        days_left = 30
+        end_date = market.get("end_date", "")
+        if end_date:
+            try:
+                from datetime import datetime, timezone
+                end = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+                computed = max(1, (end - datetime.now(timezone.utc)).days)
+                days_left = computed
+            except (ValueError, TypeError):
+                pass
         real_prob = price_to_probability(
             current_price=current_price,
             target_price=threshold,
             above=above,
             volatility_30d_pct=daily_vol,
-            days_to_expiry=30,
+            days_to_expiry=days_left,
         )
         method = f"lognormal_price_{crypto['symbol']}_{'above' if above else 'below'}_{threshold}"
 
@@ -260,6 +271,10 @@ def analyze_crypto_market(market: dict) -> dict | None:
         "method": method,
         "sources": ["Binance" if binance else None, "CoinGecko" if cg else None],
         "url": market["url"],
+        # Fields required by bot.py is_tradeable() and place_trade()
+        "clob_token_ids": market.get("clob_token_ids", []),
+        "end_date": market.get("end_date", ""),
+        "volume": market.get("volume", 0),
     }
 
 

@@ -346,11 +346,12 @@ def run_loop(cfg: dict, clob_client=None) -> None:
             elif mode == "semi":
                 handle_semi(edges, wallet_trades, cfg)
             elif mode == "auto":
-                if clob_client is None:
-                    print("[bot] No CLOB client — running in alert mode", file=sys.stderr)
-                    handle_alert(edges, wallet_trades, cfg)
-                else:
-                    handle_auto(edges, wallet_trades, cfg, clob_client)
+                if clob_client is None and not cfg["dry_run"]:
+                    # Live mode with no client — this is a startup error, stop immediately
+                    print("[bot] FATAL: auto mode with no CLOB client and dry_run=False", file=sys.stderr)
+                    break
+                # dry_run=True can run handle_auto without a live client (no orders placed)
+                handle_auto(edges, wallet_trades, cfg, clob_client)
 
             consecutive_errors = 0  # reset on success
 

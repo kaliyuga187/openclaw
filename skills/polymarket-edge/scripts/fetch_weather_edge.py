@@ -254,6 +254,10 @@ def analyze_weather_market(market: dict) -> dict | None:
         "method": method,
         "sources": ["NOAA NWS" if noaa else None, "Open-Meteo" if open_meteo else None],
         "url": market["url"],
+        # Fields required by bot.py is_tradeable() and place_trade()
+        "clob_token_ids": market.get("clob_token_ids", []),
+        "end_date": market.get("end_date", ""),
+        "volume": market.get("volume", 0),
     }
 
 
