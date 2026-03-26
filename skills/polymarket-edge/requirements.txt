@@ -1,0 +1,6 @@
+# Polymarket edge bot dependencies
+# Install with: pip install -r requirements.txt
+
+# Required for auto-trading (placing CLOB orders)
+# Not needed for alert or semi modes
+py-clob-client>=0.17.0

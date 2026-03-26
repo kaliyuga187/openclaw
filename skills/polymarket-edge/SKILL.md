@@ -4,10 +4,12 @@ description: >
   Find information edges on Polymarket prediction markets using free real-world
   data sources. Use when asked to: scan Polymarket, find polymarket edge, check
   prediction market odds, look for mispriced markets, track a Polymarket wallet,
-  set up polymarket alerts, monitor polymarket positions, or run a polymarket
-  scanner. Compares NOAA weather, Open-Meteo forecasts, Binance prices, and
-  CoinGecko sentiment against live Polymarket odds to surface gaps where
-  real-world data diverges from market pricing.
+  set up polymarket alerts, monitor polymarket positions, run a polymarket
+  scanner, run the polymarket bot, start trading bot, set up auto-trading, or
+  start the polymarket profit bot. Compares NOAA weather, Open-Meteo forecasts,
+  Binance prices, and CoinGecko sentiment against live Polymarket odds to surface
+  gaps where real-world data diverges from market pricing. Includes a trading
+  bot (bot.py) that can place orders automatically via the Polymarket CLOB API.
 metadata:
   {
     "openclaw":
@@ -112,6 +114,129 @@ python3 ~/.openclaw/skills/polymarket-edge/scripts/track_wallet.py \
   --lookup-username kingofcoinflips
 ```
 
+## Trading bot (bot.py)
+
+The bot daemon runs continuously, calls the full edge detection pipeline, and can
+place orders automatically via the Polymarket CLOB API.
+
+### Three modes
+
+| Mode | What it does | Risk |
+|---|---|---|
+| `alert` | Detect edges, print to terminal | None (default) |
+| `semi` | Print exact `trader.py` commands to copy-paste | None |
+| `auto` | Automatically place CLOB orders | Real money |
+
+### Bot quick start
+
+```bash
+SKILL=~/.openclaw/skills/polymarket-edge/scripts
+
+# Step 1: alert mode — safe, see what the bot would do
+python3 $SKILL/bot.py --mode alert --interval 300
+
+# Step 2: semi mode — shows exact commands to execute yourself
+python3 $SKILL/bot.py --mode semi
+
+# Step 3: dry-run auto — simulates trades, no real money
+python3 $SKILL/bot.py --mode auto --dry-run \
+  --private-key 0xYOUR_KEY
+
+# Step 4: live trading (starts at $25/trade max)
+python3 $SKILL/bot.py --mode auto \
+  --private-key 0xYOUR_KEY \
+  --max-position 25 \
+  --max-daily-loss 100 \
+  --min-edge 0.10 \
+  --interval 300
+```
+
+### Setting up for auto-trading (one-time)
+
+**Requirements:**
+1. A wallet with USDC on Polygon (bridge from Ethereum via Polygon Bridge)
+2. Approve USDC spending on Polymarket: visit polymarket.com → connect wallet → deposit
+3. Your wallet's private key (export from MetaMask: Settings → Security → Export Private Key)
+4. Install py-clob-client: `pip install py-clob-client`
+
+**Store your private key securely:**
+```bash
+openclaw config set polymarket.private_key 0xYOUR_PRIVATE_KEY
+```
+
+Then run the bot reading from config:
+```bash
+python3 $SKILL/bot.py --mode auto \
+  --private-key "$(openclaw config get polymarket.private_key)" \
+  --dry-run
+```
+
+**Never share or commit your private key.**
+
+### Bot safety defaults
+
+| Env var / flag | Default | Purpose |
+|---|---|---|
+| `--max-position` | $25 | Max USD per trade |
+| `--max-daily-loss` | $100 | Stop trading if you lose this much today |
+| `--min-edge` | 10% | Min edge required to place a real order |
+| `BOT_MIN_VOLUME_USD` | $10,000 | Only trade liquid markets |
+| `BOT_MIN_DAYS_TO_EXPIRY` | 7 days | Skip near-expiry markets |
+| `BOT_MAX_OPEN_POSITIONS` | 5 | Max simultaneous positions |
+
+### Portfolio tracking
+
+```bash
+# See your P&L
+python3 $SKILL/portfolio.py summary
+
+# See open positions
+python3 $SKILL/portfolio.py open
+
+# Manually mark a market as resolved
+python3 $SKILL/portfolio.py resolve --market-id X --resolved YES
+```
+
+Portfolio is stored in `~/.openclaw/polymarket-portfolio.jsonl`.
+
+### CLOB utility commands
+
+```bash
+# Initialize API credentials (run once after setting private key)
+python3 $SKILL/trader.py init --private-key 0xYOUR_KEY
+
+# Get order book for a token
+python3 $SKILL/trader.py book <token_id>
+
+# Place a manual order (dry-run by default, add --live to execute)
+python3 $SKILL/trader.py buy <token_id> --side YES --size 25 --price 0.45
+
+# See open positions
+python3 $SKILL/trader.py positions --private-key 0xYOUR_KEY
+```
+
+### Running the bot 24/7
+
+**On a VPS or Pi (recommended):**
+```bash
+nohup python3 $SKILL/bot.py --mode auto \
+  --private-key 0xYOUR_KEY \
+  --interval 300 \
+  > ~/.openclaw/polymarket-bot.log 2>&1 &
+
+# Tail the log
+tail -f ~/.openclaw/polymarket-bot.log
+```
+
+**Via OpenClaw cron (alert mode only):**
+```bash
+openclaw cron add polymarket:bot \
+  --every 5m \
+  --message "Run polymarket edge scan and report top 3 opportunities" \
+  --deliver announce \
+  --channel telegram
+```
+
 ## Tuning
 
 | Env var | Default | Purpose |
@@ -120,19 +245,28 @@ python3 ~/.openclaw/skills/polymarket-edge/scripts/track_wallet.py \
 | `MARKETS_LIMIT` | `200` | Max active Polymarket markets to fetch |
 | `FRED_API_KEY` | — | Optional: enables FRED economic data |
 | `COINGECKO_API_KEY` | — | Optional: higher rate limits |
+| `POLYMARKET_PRIVATE_KEY` | — | Wallet private key for auto-trading |
+| `POLYMARKET_WALLET` | — | Proxy wallet address to track |
 
 ## Dependencies
 
-Scripts use only Python standard library + `urllib` for HTTP — no pip installs
-needed. If `httpx` or `requests` is available it will be preferred for speed,
-but not required.
+Alert/semi modes use only Python standard library — no pip installs needed.
+Auto-trading mode requires `py-clob-client`:
+```bash
+pip install -r ~/.openclaw/skills/polymarket-edge/requirements.txt
+```
 
 ## Notes
 
 - All scripts are self-contained and handle their own retries (3 attempts,
   exponential backoff). If a single source fails, the others continue.
+- The bot itself has exponential backoff on crash — if it errors, it waits and
+  retries automatically (same behavior as the tweet's 2am NOAA restart).
 - State for wallet tracking is stored in `~/.openclaw/polymarket-edge-state.json`
   and is created automatically on first run.
 - Polymarket odds are expressed as prices between 0 and 1 (e.g. 0.72 = 72% YES).
 - See `references/strategy.md` for details on how edge is calculated per market type.
 - See `references/polymarket-api.md` for full API endpoint reference.
+- **Prediction markets are risky.** The edge calculations are statistical estimates,
+  not guarantees. Start with small positions and verify the strategy works before
+  scaling up.

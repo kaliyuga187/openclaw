@@ -127,14 +127,26 @@ def fetch_markets(limit: int = MARKETS_LIMIT, tag_filter: str = "all") -> list[d
         if yes_prob is None:
             continue
 
+        # clobTokenIds: [yes_token_id, no_token_id] — needed for CLOB order placement
+        raw_clob = m.get("clobTokenIds", "[]")
+        if isinstance(raw_clob, str):
+            try:
+                clob_token_ids = json.loads(raw_clob)
+            except json.JSONDecodeError:
+                clob_token_ids = []
+        else:
+            clob_token_ids = list(raw_clob) if raw_clob else []
+
         markets.append({
             "id": m.get("id") or m.get("conditionId", ""),
+            "condition_id": m.get("conditionId", ""),
             "slug": m.get("slug", ""),
             "question": question,
             "tags": tags,
             "yes_prob": round(yes_prob, 4),
             "no_prob": round(1 - yes_prob, 4),
             "prices": prices,
+            "clob_token_ids": clob_token_ids,  # [yes_token, no_token]
             "end_date": m.get("endDate") or m.get("endDateIso", ""),
             "volume": m.get("volume", 0),
             "url": f"https://polymarket.com/event/{m.get('slug', m.get('id', ''))}",
