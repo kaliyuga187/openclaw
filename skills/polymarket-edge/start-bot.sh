@@ -16,6 +16,9 @@ set -euo pipefail
 
 SKILL="$(cd "$(dirname "$0")" && pwd)"
 PRIVATE_KEY="${POLYMARKET_PRIVATE_KEY:-$(openclaw config get polymarket.private_key 2>/dev/null || echo '')}"
+# Telegram: bot reads token from ~/.openclaw/openclaw.json automatically.
+# Set TELEGRAM_CHAT_ID to your chat ID, or send /start to your bot first (auto-detected).
+export TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-}"
 MODE="${1:-alert}"
 DRY_RUN=""
 

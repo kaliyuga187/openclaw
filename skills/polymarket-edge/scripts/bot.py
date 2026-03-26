@@ -43,6 +43,8 @@ import subprocess
 import sys
 import time
 import traceback
+import urllib.request
+import urllib.parse
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -85,7 +87,51 @@ def load_config(args) -> dict:
     cfg["min_volume_usd"] = float(os.environ.get("BOT_MIN_VOLUME_USD", cfg["min_volume_usd"]))
     cfg["min_days_to_expiry"] = int(os.environ.get("BOT_MIN_DAYS_TO_EXPIRY", cfg["min_days_to_expiry"]))
     cfg["max_open_positions"] = int(os.environ.get("BOT_MAX_OPEN_POSITIONS", cfg["max_open_positions"]))
+    # Telegram: token from env, then OpenClaw config file
+    cfg["telegram_token"] = os.environ.get("TELEGRAM_BOT_TOKEN", "") or _read_openclaw_telegram_token()
+    cfg["telegram_chat_id"] = os.environ.get("TELEGRAM_CHAT_ID", "")
     return cfg
+
+
+def _read_openclaw_telegram_token() -> str:
+    """Read Telegram bot token from ~/.openclaw/openclaw.json if present."""
+    config_path = Path.home() / ".openclaw" / "openclaw.json"
+    try:
+        with open(config_path) as f:
+            data = json.load(f)
+        return data.get("channels", {}).get("telegram", {}).get("botToken", "")
+    except (FileNotFoundError, json.JSONDecodeError, KeyError):
+        return ""
+
+
+def telegram_send(token: str, chat_id: str, text: str) -> bool:
+    """Send a message via Telegram Bot API. Returns True on success."""
+    if not token or not chat_id:
+        return False
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = json.dumps({"chat_id": chat_id, "text": text, "parse_mode": "HTML"}).encode()
+    try:
+        req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return resp.status == 200
+    except Exception as e:
+        print(f"[bot] Telegram send failed: {e}", file=sys.stderr)
+        return False
+
+
+def get_telegram_chat_id(token: str) -> str:
+    """Fetch the most recent chat ID from getUpdates (run once to pair)."""
+    url = f"https://api.telegram.org/bot{token}/getUpdates"
+    try:
+        with urllib.request.urlopen(url, timeout=10) as resp:
+            data = json.loads(resp.read())
+        updates = data.get("result", [])
+        if updates:
+            msg = updates[-1].get("message") or updates[-1].get("channel_post", {})
+            return str(msg.get("chat", {}).get("id", ""))
+    except Exception as e:
+        print(f"[bot] getUpdates failed: {e}", file=sys.stderr)
+    return ""
 
 
 # ---------------------------------------------------------------------------
@@ -167,14 +213,18 @@ def is_tradeable(edge: dict, cfg: dict) -> tuple[bool, str]:
 # ---------------------------------------------------------------------------
 
 def handle_alert(edges: list[dict], wallet_trades: list[dict], cfg: dict) -> None:
-    """Print/log alert-mode output."""
+    """Print/log alert-mode output and send Telegram notification when edges found."""
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     print(f"\n{'='*60}")
     print(f"📈 Polymarket Edge Scan — {ts}")
     print(f"{'='*60}")
 
+    tg_lines = []  # lines to send to Telegram (only when edges found)
+
     if edges:
         print(f"\n{len(edges)} edge(s) above {cfg['alert_threshold']:.0%}:\n")
+        tg_lines.append(f"<b>📈 Polymarket Edge — {ts}</b>")
+        tg_lines.append(f"{len(edges)} edge(s) above {cfg['alert_threshold']:.0%}:\n")
         for i, e in enumerate(edges[:10], 1):
             rec = e.get("recommended", "?")
             edge_pct = f"{e.get('edge', 0):.0%}"
@@ -187,6 +237,13 @@ def handle_alert(edges: list[dict], wallet_trades: list[dict], cfg: dict) -> Non
             if e.get("url"):
                 print(f"     {e['url']}")
             print()
+            tg_lines.append(
+                f"{i}. <b>[{cat}] BET {rec} — {edge_pct}</b>\n"
+                f"   {e.get('question', '')[:70]}\n"
+                f"   Market: {market_pct} | Real: {real_pct} | Edge: {edge_pct}"
+            )
+            if e.get("url"):
+                tg_lines.append(f"   {e['url']}")
     else:
         print(f"\nNo edges above {cfg['alert_threshold']:.0%} found.\n")
 
@@ -198,6 +255,23 @@ def handle_alert(edges: list[dict], wallet_trades: list[dict], cfg: dict) -> Non
                 f"${t.get('value_usd', 0):,.0f} | {t.get('question', '')[:50]}"
             )
         print()
+
+    # Send to Telegram if edges were found and credentials are available
+    if tg_lines and cfg.get("telegram_token"):
+        chat_id = cfg.get("telegram_chat_id", "")
+        if not chat_id:
+            # Auto-discover chat ID from most recent /start message
+            chat_id = get_telegram_chat_id(cfg["telegram_token"])
+            if chat_id:
+                cfg["telegram_chat_id"] = chat_id  # cache for this session
+        if chat_id:
+            ok = telegram_send(cfg["telegram_token"], chat_id, "\n".join(tg_lines))
+            if ok:
+                print("[bot] Telegram alert sent.", file=sys.stderr)
+            else:
+                print("[bot] Telegram send failed (check token + chat_id).", file=sys.stderr)
+        else:
+            print("[bot] Telegram: no chat_id found. Send /start to your bot first.", file=sys.stderr)
 
 
 # ---------------------------------------------------------------------------
@@ -302,6 +376,23 @@ def handle_auto(
                 url=edge.get("url", ""),
                 dry_run=dry_run,
             )
+            # Notify Telegram when a trade is placed (or simulated)
+            if cfg.get("telegram_token"):
+                label = "DRY RUN" if dry_run else "LIVE TRADE"
+                msg = (
+                    f"<b>🤖 [{label}] Trade Placed</b>\n"
+                    f"<b>{side}</b> @ ${size_usd:.2f}\n"
+                    f"Edge: {edge.get('edge', 0):.0%}\n"
+                    f"{edge.get('question', '')[:80]}\n"
+                    f"{edge.get('url', '')}"
+                )
+                chat_id = cfg.get("telegram_chat_id", "")
+                if not chat_id:
+                    chat_id = get_telegram_chat_id(cfg["telegram_token"])
+                    if chat_id:
+                        cfg["telegram_chat_id"] = chat_id
+                if chat_id:
+                    telegram_send(cfg["telegram_token"], chat_id, msg)
         else:
             print(f"[bot] Trade failed: {result.get('error', 'unknown')}", file=sys.stderr)
 
