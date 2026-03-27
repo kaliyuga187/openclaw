@@ -11,7 +11,7 @@ echo "=== Installing system deps ==="
 apt update -qq && apt install -y python3 python3-pip git tmux
 
 echo "=== Installing Python deps ==="
-pip3 install -q py-clob-client requests
+pip3 install -q py-clob-client requests websockets
 
 echo "=== Cloning repo ==="
 git clone https://github.com/kaliyuga187/openclaw /root/openclaw

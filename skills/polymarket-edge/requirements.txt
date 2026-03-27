@@ -4,3 +4,6 @@
 # Required for auto-trading (placing CLOB orders)
 # Not needed for alert or semi modes
 py-clob-client>=0.17.0
+
+# Required for real-time WebSocket orderbook streaming (stream.py)
+websockets>=12.0
