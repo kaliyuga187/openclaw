@@ -109,7 +109,7 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq && apt-get install -y -qq python3 python3-pip git curl 2>&1 | tail -3
 
 step "Installing Python packages..."
-pip3 install -q py-clob-client requests websockets 2>&1 | tail -2
+pip3 install -q --break-system-packages py-clob-client requests websockets 2>&1 | tail -2
 
 ok "Dependencies installed."
 
