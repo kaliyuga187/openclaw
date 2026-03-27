@@ -16,6 +16,7 @@ set -euo pipefail
 
 SKILL="$(cd "$(dirname "$0")" && pwd)"
 PRIVATE_KEY="${POLYMARKET_PRIVATE_KEY:-$(openclaw config get polymarket.private_key 2>/dev/null || echo '')}"
+WALLET="${POLYMARKET_WALLET:-0x414C424Ad1A0Db828ab67f289dda0F834e5714Cd}"
 # Telegram: bot reads token from ~/.openclaw/openclaw.json automatically.
 # Set TELEGRAM_CHAT_ID to your chat ID, or send /start to your bot first (auto-detected).
 export TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-}"
@@ -52,6 +53,7 @@ exec python3 "$SKILL/bot.py" \
   --mode "$MODE" \
   $DRY_RUN \
   ${PRIVATE_KEY:+--private-key "$PRIVATE_KEY"} \
+  ${WALLET:+--wallet "$WALLET"} \
   --max-position 50 \
   --max-daily-loss 50 \
   --min-edge 0.10 \
