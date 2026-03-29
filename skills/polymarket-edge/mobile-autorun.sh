@@ -10,7 +10,6 @@
 
 set -euo pipefail
 
-TELEGRAM_TOKEN="8734661711:AAHU6x7rmXq7ngkhi5Cgfh7FuC7q5Gihpag"
 REPO="https://github.com/kaliyuga187/openclaw"
 
 # ── Colours ──────────────────────────────────────────────────
@@ -38,6 +37,9 @@ echo ""
 echo -e "${CYAN}  Step 1/6  Credentials${NC}"
 echo -e "  ──────────────────────"
 echo ""
+
+read -rp "  Telegram bot token (from @BotFather): " TELEGRAM_TOKEN
+[[ -z "$TELEGRAM_TOKEN" ]] && fail "Telegram token required."
 
 read -rp "  Wallet private key (0x...): " PRIVATE_KEY
 [[ -z "$PRIVATE_KEY" ]] && fail "Private key required."
