@@ -126,7 +126,7 @@ echo ""
 
 step "Cloning repo..."
 rm -rf /root/openclaw
-git clone -q "$REPO" /root/openclaw
+git clone -q -b claude/identify-marketable-skills-gzCXp "$REPO" /root/openclaw
 
 step "Copying scripts..."
 mkdir -p /root/polymarket-bot
