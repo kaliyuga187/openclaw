@@ -96,6 +96,9 @@ jobs:
                 echo "::warning::dist/ folder is ${DIST_SIZE}MB (exceeds 50MB threshold)"
               fi
           - runtime: node
+            task: version-consistency
+            command: node --import tsx scripts/check-version-consistency.ts
+          - runtime: node
             task: pack-install
             command: |
               pnpm build

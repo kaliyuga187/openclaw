@@ -1,0 +1,90 @@
+name: PR Size
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  size-label:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Calculate PR size and apply label
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const { data: files } = await github.rest.pulls.listFiles({
+              ...context.repo,
+              pull_number: context.payload.pull_request.number,
+              per_page: 100,
+            });
+
+            let additions = 0;
+            let deletions = 0;
+            for (const file of files) {
+              additions += file.additions;
+              deletions += file.deletions;
+            }
+            const total = additions + deletions;
+
+            let size;
+            if (total < 50) size = "size/S";
+            else if (total < 200) size = "size/M";
+            else if (total < 1000) size = "size/L";
+            else size = "size/XL";
+
+            const sizeLabels = ["size/S", "size/M", "size/L", "size/XL"];
+            const { data: currentLabels } = await github.rest.issues.listLabelsOnIssue({
+              ...context.repo,
+              issue_number: context.payload.pull_request.number,
+            });
+            const toRemove = currentLabels
+              .filter(l => sizeLabels.includes(l.name) && l.name !== size)
+              .map(l => l.name);
+
+            for (const label of toRemove) {
+              await github.rest.issues.removeLabel({
+                ...context.repo,
+                issue_number: context.payload.pull_request.number,
+                name: label,
+              }).catch(() => {});
+            }
+
+            await github.rest.issues.addLabels({
+              ...context.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: [size],
+            });
+
+            core.info(`PR size: +${additions} -${deletions} = ${total} lines → ${size}`);
+
+            if (total > 1000) {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: context.payload.pull_request.number,
+                body: `This PR has **${total}** changed lines (+${additions} -${deletions}). Consider breaking it into smaller PRs for easier review.`,
+              });
+            }
+
+  fork-notice:
+    if: github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log PR size (fork — no label permissions)
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const { data: files } = await github.rest.pulls.listFiles({
+              ...context.repo,
+              pull_number: context.payload.pull_request.number,
+              per_page: 100,
+            });
+            let total = 0;
+            for (const file of files) {
+              total += file.additions + file.deletions;
+            }
+            core.notice(`Fork PR size: ${total} lines changed (labeling skipped)`);
