@@ -86,6 +86,24 @@ jobs:
           - runtime: node
             task: format
             command: pnpm format
+          - runtime: node
+            task: dist-size
+            command: |
+              pnpm build
+              DIST_SIZE=$(du -sm dist | cut -f1)
+              echo "dist/ size: ${DIST_SIZE}MB"
+              if [ "$DIST_SIZE" -gt 50 ]; then
+                echo "::warning::dist/ folder is ${DIST_SIZE}MB (exceeds 50MB threshold)"
+              fi
+          - runtime: node
+            task: pack-install
+            command: |
+              pnpm build
+              pnpm pack
+              TARBALL=$(ls openclaw-*.tgz)
+              npm install -g "./$TARBALL"
+              openclaw --version
+              openclaw --help > /dev/null
           - runtime: bun
             task: test
             command: pnpm canvas:a2ui:bundle && bunx vitest run
