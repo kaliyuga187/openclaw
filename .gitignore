@@ -76,3 +76,6 @@ memory/
 .agent/*.json
 !.agent/workflows/
 __pycache__/
+
+# Claude Flow data (memory, sessions, neural patterns)
+data/claude-flow/

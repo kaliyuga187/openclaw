@@ -1,0 +1,30 @@
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "mcpServers": {
+    "claude-flow": {
+      "command": "npx",
+      "args": ["claude-flow@v3alpha", "mcp", "start"],
+      "env": {}
+    }
+  },
+  "claudeFlow": {
+    "agentTeams": {
+      "enabled": true,
+      "teammateMode": "auto",
+      "taskListEnabled": true,
+      "mailboxEnabled": true
+    },
+    "swarm": {
+      "topology": "hierarchical",
+      "maxAgents": 8,
+      "strategy": "specialized",
+      "consensus": "raft"
+    },
+    "memory": {
+      "backend": "hybrid",
+      "path": "./data/claude-flow/memory"
+    }
+  }
+}
