@@ -1,0 +1,64 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/gh/ruvnet/claude-flow@main/schema/config.json",
+  "version": "3.0",
+  "project": {
+    "name": "openclaw",
+    "description": "WhatsApp gateway CLI with Pi RPC agent"
+  },
+  "orchestration": {
+    "topology": "hierarchical",
+    "maxAgents": 8,
+    "strategy": "specialized",
+    "consensus": "raft",
+    "antiDrift": true
+  },
+  "memory": {
+    "backend": "hybrid",
+    "path": "./data/claude-flow/memory",
+    "hnsw": {
+      "enabled": true,
+      "dimensions": 384,
+      "metric": "cosine"
+    }
+  },
+  "agents": {
+    "routing": {
+      "1": { "task": "bugfix", "agents": ["coordinator", "researcher", "coder", "tester"] },
+      "3": { "task": "feature", "agents": ["coordinator", "architect", "coder", "tester", "reviewer"] },
+      "5": { "task": "refactor", "agents": ["coordinator", "architect", "coder", "reviewer"] },
+      "7": { "task": "performance", "agents": ["coordinator", "perf-engineer", "coder"] },
+      "9": { "task": "security", "agents": ["coordinator", "security-architect", "auditor"] }
+    },
+    "booster": {
+      "enabled": true,
+      "intents": [
+        "var-to-const",
+        "add-types",
+        "add-error-handling",
+        "async-await",
+        "add-logging",
+        "remove-console"
+      ]
+    }
+  },
+  "hooks": {
+    "sessionStart": true,
+    "sessionEnd": true,
+    "preTasks": true,
+    "postTasks": true,
+    "trainPatterns": true
+  },
+  "security": {
+    "inputValidation": true,
+    "pathTraversal": true,
+    "commandInjection": true
+  },
+  "providers": {
+    "default": "anthropic",
+    "modelRouting": {
+      "simple": "haiku",
+      "moderate": "sonnet",
+      "complex": "opus"
+    }
+  }
+}
