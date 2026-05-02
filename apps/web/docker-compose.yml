@@ -1,0 +1,34 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gsd
+      POSTGRES_PASSWORD: gsd
+      POSTGRES_DB: gsd
+    ports:
+      - '5432:5432'
+    volumes:
+      - gsd_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U gsd -d gsd']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  web:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://gsd:gsd@db:5432/gsd?schema=public
+    ports:
+      - '3000:3000'
+    command: sh -c "npx prisma migrate deploy && node server.js"
+
+volumes:
+  gsd_pgdata:
