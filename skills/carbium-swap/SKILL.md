@@ -7,7 +7,15 @@ metadata:
       {
         "emoji": "🌀",
         "homepage": "https://carbium.io",
-        "requires": { "env": ["CARBIUM_API_KEY", "CARBIUM_RPC_KEY"] },
+        "requires":
+          {
+            "env":
+              [
+                "CARBIUM_API_KEY",
+                "CARBIUM_RPC_KEY",
+                "CARBIUM_REFERRAL_ACCOUNT",
+              ],
+          },
       },
   }
 ---
@@ -26,10 +34,12 @@ Skip this skill for Polygon/EVM swaps — Carbium is Solana-only.
 
 ## Env
 
-| Var               | Purpose                                              |
-| ----------------- | ---------------------------------------------------- |
-| `CARBIUM_API_KEY` | Auth header for `https://api.carbium.io/v1/*`.       |
-| `CARBIUM_RPC_KEY` | Solana RPC endpoint used for `Connection` + submit.  |
+| Var                        | Purpose                                                                                                                     |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `CARBIUM_API_KEY`          | Auth header for `https://api.carbium.io/v1/*`.                                                                              |
+| `CARBIUM_RPC_KEY`          | Solana RPC endpoint used for `Connection` + submit.                                                                         |
+| `CARBIUM_REFERRAL_ACCOUNT` | Pubkey that receives platform-fee share on every swap. Required to monetize. **TODO: confirm exact field name in docs.**    |
+| `CARBIUM_REFERRAL_BPS`     | Fee in basis points routed to `CARBIUM_REFERRAL_ACCOUNT` (e.g. `30` = 0.30%). **TODO: confirm Carbium's max + field name.** |
 
 ## Canonical pattern
 
@@ -64,6 +74,11 @@ async function getQuoteWithTx(params: {
       amount: params.amount,
       slippage_bps: params.slippageBps,
       user_account: params.userAccount,
+      // TODO: confirm Carbium's exact field names for referral/fee capture.
+      // Placeholders below follow the Jupiter-style convention; rename to the
+      // real `referral_*` keys once verified in Carbium docs.
+      referral_account: process.env.CARBIUM_REFERRAL_ACCOUNT,
+      referral_bps: Number(process.env.CARBIUM_REFERRAL_BPS ?? 30),
     }),
   });
   if (!res.ok) throw new Error(`Carbium quote failed: ${res.status}`);
@@ -99,6 +114,16 @@ const sig = await executeSwap(signer, quote);
 - `VersionedTransaction.deserialize` (not legacy `Transaction.from`) — Carbium ships v0 transactions with address-lookup tables.
 - `maxRetries: 3` is the recommended RPC submit retry; leave `skipPreflight: false` so bad routes fail fast.
 - Confirm with commitment `"confirmed"` for UX latency; use `"finalized"` only when downstream state depends on irreversibility (rare).
+
+## Monetization (referral/fee on every swap)
+
+Every quote should thread the platform's referral pubkey + fee bps through to Carbium so the prebuilt `txn` includes a transfer to the referral account. This is the only monetization hook in scope right now — there is no separate paywall.
+
+- Always pass `referral_account` (or whatever Carbium's real field is — confirm in their docs and rename here) and `referral_bps` on every quote request.
+- Keep the fee a small bps value (e.g. `20–50` bps). High bps degrades the user's effective price and pushes them to a different aggregator.
+- The referral pubkey must be a valid SPL token account for the *output mint* (or whatever Carbium specifies). Misconfigured referral accounts can either silently drop the fee or fail the swap; verify on a small test trade before production.
+- Never hardcode `CARBIUM_REFERRAL_ACCOUNT` — pull it from env so per-build referral routing is possible (e.g. MetaLaunch-AI and Polyback can capture fees into different treasuries).
+- Audit: log `(sig, in_amount, out_amount, referral_account, referral_bps)` on every successful swap so revenue is reconcilable on-chain.
 
 ## Candidate builds
 
