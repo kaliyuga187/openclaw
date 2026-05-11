@@ -18,6 +18,8 @@ metadata:
 
 # Paywall + subscription
 
+> **Status: parked.** The current monetization mandate is fee/referral capture on every swap (see `skills/carbium-swap`). This Stripe-paywall skill is **kept as reference for a future SaaS-monetization push**, but it is not actively applied to any build right now. Do not pull this into a build unless the user explicitly re-scopes monetization to subscriptions.
+
 Drop a Stripe-backed paywall into a user-facing web app: Checkout Session for sign-up, webhook for entitlement, gated routes for paid features. One source of truth for plan→feature mapping.
 
 ## When to use
