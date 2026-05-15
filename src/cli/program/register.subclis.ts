@@ -239,6 +239,14 @@ const entries: SubCliEntry[] = [
       mod.registerCompletionCli(program);
     },
   },
+  {
+    name: "polymarket",
+    description: "Polymarket copy-trading bot",
+    register: async (program) => {
+      const mod = await import("../polymarket-cli.js");
+      mod.registerPolymarketCli(program);
+    },
+  },
 ];
 
 export function getSubCliEntries(): SubCliEntry[] {
