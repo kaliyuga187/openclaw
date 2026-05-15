@@ -27,6 +27,17 @@ interface CliArgs {
   json: boolean;
 }
 
+function readNumberFlag(flag: string, value: string | undefined): number {
+  if (value == null) {
+    throw new Error(`polymarket: ${flag} requires a value`);
+  }
+  const n = Number(value);
+  if (!Number.isFinite(n)) {
+    throw new Error(`polymarket: ${flag} expected a number, got ${JSON.stringify(value)}`);
+  }
+  return n;
+}
+
 function parseArgs(argv: readonly string[]): CliArgs {
   const out: CliArgs = { live: false, showWallets: false, json: false };
   for (let i = 0; i < argv.length; i += 1) {
@@ -42,13 +53,13 @@ function parseArgs(argv: readonly string[]): CliArgs {
         out.json = true;
         break;
       case "--size-usd":
-        out.sizeUsd = Number(argv[++i]);
+        out.sizeUsd = readNumberFlag(a, argv[++i]);
         break;
       case "--max-trades":
-        out.maxTrades = Number(argv[++i]);
+        out.maxTrades = readNumberFlag(a, argv[++i]);
         break;
       case "--min-confidence":
-        out.minConfidence = Number(argv[++i]);
+        out.minConfidence = readNumberFlag(a, argv[++i]);
         break;
       case "--help":
       case "-h":
@@ -79,7 +90,12 @@ async function main(): Promise<void> {
   }
 
   const bot = new PolymarketBot(cfg);
-  const result = await bot.run({ log: (msg) => console.log(msg) });
+  // Progress logs go to stderr when --json is set so stdout stays a single
+  // parseable JSON document for downstream automation.
+  const logFn = args.json
+    ? (msg: string) => process.stderr.write(`${msg}\n`)
+    : (msg: string) => console.log(msg);
+  const result = await bot.run({ log: logFn });
 
   if (args.json) {
     console.log(JSON.stringify(result, null, 2));

@@ -29,10 +29,10 @@ function keyOf(k: CandidateKey): string {
  * Build trade signals by aggregating recent smart-wallet trades.
  *
  * Strategy: a (market, outcome, side) becomes a signal when >=2 smart wallets
- * took the same side in the lookback window. Confidence scales with:
+ * took the same side within the 24h lookback window. Confidence scales with:
  *   - number of smart wallets agreeing
  *   - aggregate notional
- *   - freshness (exponential decay over 24h)
+ *   - freshness (exponential decay, half-life ~5.5h)
  */
 export function buildSignals(
   trades: readonly PolymarketTrade[],

@@ -53,6 +53,17 @@ describe("rankWallets", () => {
     // SELL on m2 has no open position there, so realized PnL=0.
     expect(ranked[0].realizedPnlUsd).toBeCloseTo(0, 5);
   });
+
+  it("normalizes wallet addresses to lowercase so mixed-case rows don't split", () => {
+    const trades: PolymarketTrade[] = [
+      trade({ proxyWallet: "0xAliCe", side: "BUY", size: 100, price: 0.4, timestamp: 1 }),
+      trade({ proxyWallet: "0xALICE", side: "SELL", size: 100, price: 0.7, timestamp: 2 }),
+    ];
+    const ranked = rankWallets(trades);
+    expect(ranked).toHaveLength(1);
+    expect(ranked[0].wallet).toBe("0xalice");
+    expect(ranked[0].realizedPnlUsd).toBeCloseTo(30, 5);
+  });
 });
 
 describe("filterSmartWallets", () => {

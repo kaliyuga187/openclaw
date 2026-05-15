@@ -29,7 +29,23 @@ interface DataTrade {
 
 function toNumber(v: unknown): number {
   const n = typeof v === "string" ? Number(v) : (v as number);
-  return Number.isFinite(n) ? n : 0;
+  return Number.isFinite(n) ? n : Number.NaN;
+}
+
+function isValidTrade(t: PolymarketTrade): boolean {
+  // Drop rows where critical numeric fields didn't parse. A trade with
+  // size=0 or price=0 isn't useful for ranking and a NaN timestamp would
+  // break the freshness filter in trade-filter.ts.
+  return (
+    Number.isFinite(t.timestamp) &&
+    Number.isFinite(t.size) &&
+    t.size > 0 &&
+    Number.isFinite(t.price) &&
+    t.price > 0 &&
+    Number.isFinite(t.outcomeIndex) &&
+    typeof t.proxyWallet === "string" &&
+    t.proxyWallet.length > 0
+  );
 }
 
 function parseStringArray(value: string | undefined): string[] {
@@ -131,7 +147,9 @@ export class PolymarketClient {
       const raw = await this.getJson<DataTrade[]>(url.toString());
       if (raw.length === 0) {break;}
       for (const t of raw) {
-        out.push(dataToTrade(t));
+        const parsed = dataToTrade(t);
+        if (!isValidTrade(parsed)) {continue;}
+        out.push(parsed);
         if (out.length >= target) {return out;}
       }
       if (raw.length < cappedSize) {break;}

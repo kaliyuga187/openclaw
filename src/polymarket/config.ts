@@ -12,8 +12,22 @@ function readNumber(name: string, fallback: number): number {
 
 function readBool(name: string, fallback: boolean): boolean {
   const raw = process.env[name];
-  if (raw == null || raw === "") {return fallback;}
-  return /^(1|true|yes|on)$/i.test(raw);
+  if (raw == null || raw === "") {
+    return fallback;
+  }
+  const trimmed = raw.trim().toLowerCase();
+  if (/^(1|true|yes|on)$/.test(trimmed)) {
+    return true;
+  }
+  if (/^(0|false|no|off)$/.test(trimmed)) {
+    return false;
+  }
+  // Fail closed: do NOT silently treat a typo (`treu`, `flase`) as the safer
+  // value. For POLYMARKET_DRY_RUN in particular, a misparse here could flip the
+  // bot into live trading. Force the operator to fix the input.
+  throw new Error(
+    `polymarket: env ${name} must be one of true/false/1/0/yes/no/on/off (got: ${JSON.stringify(raw)})`,
+  );
 }
 
 function readString(name: string, fallback = ""): string {

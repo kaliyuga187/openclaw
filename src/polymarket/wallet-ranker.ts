@@ -9,8 +9,14 @@ interface OpenPosition {
  * Estimate per-wallet performance from a trade stream.
  *
  * PnL approximation: treat each (wallet, market, outcomeIndex) as a position.
- * BUY adds size at cost=size*price; SELL closes FIFO at size*price and realizes
- * (salePrice - avgOpenPrice) * size.
+ * BUY adds size at cost = size * price; SELL closes against the position's
+ * running average cost (cost / size), so realized PnL on a close of `n`
+ * shares is `(salePrice - avgOpenPrice) * n`. This is moving-average cost
+ * accounting, not strict FIFO lot matching — the distinction only matters
+ * if a wallet partially closes a position at varying prices.
+ *
+ * Wallet keys are lower-cased so mixed-case addresses from the upstream API
+ * don't get split across multiple entries.
  *
  * Limitations:
  *  - Ignores unresolved/open positions (their value is unknown until resolution).
@@ -26,11 +32,12 @@ export function rankWallets(trades: readonly PolymarketTrade[]): WalletStats[] {
   const sorted = [...trades].toSorted((a, b) => a.timestamp - b.timestamp);
 
   for (const t of sorted) {
-    const posKey = `${t.proxyWallet}|${t.market}|${t.outcomeIndex}`;
-    let s = statsByWallet.get(t.proxyWallet);
+    const wallet = t.proxyWallet.toLowerCase();
+    const posKey = `${wallet}|${t.market}|${t.outcomeIndex}`;
+    let s = statsByWallet.get(wallet);
     if (!s) {
       s = {
-        wallet: t.proxyWallet,
+        wallet,
         trades: 0,
         volumeUsd: 0,
         realizedPnlUsd: 0,
@@ -40,7 +47,7 @@ export function rankWallets(trades: readonly PolymarketTrade[]): WalletStats[] {
         avgTradeSizeUsd: 0,
         lastTradeTs: 0,
       };
-      statsByWallet.set(t.proxyWallet, s);
+      statsByWallet.set(wallet, s);
     }
 
     const notional = t.size * t.price;
