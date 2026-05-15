@@ -108,23 +108,48 @@ export class PolymarketClient {
   }
 
   /**
+   * Fetch trades from /trades with offset-based pagination.
+   * Polymarket's Data API caps each call at ~500 rows, so reaching multi-thousand
+   * trade counts requires looping. We stop when:
+   *   - the running total hits `target`
+   *   - the server returns fewer rows than `pageSize` (end of feed)
+   *   - `maxPages` is reached (safety valve)
+   */
+  private async fetchTradesPaginated(
+    params: Record<string, string>,
+    target: number,
+    pageSize = 500,
+    maxPages = 200,
+  ): Promise<PolymarketTrade[]> {
+    const out: PolymarketTrade[] = [];
+    const cappedSize = Math.min(Math.max(1, pageSize), 500);
+    for (let page = 0; page < maxPages; page += 1) {
+      const url = new URL("/trades", this.cfg.dataBaseUrl);
+      for (const [k, v] of Object.entries(params)) {url.searchParams.set(k, v);}
+      url.searchParams.set("limit", String(cappedSize));
+      url.searchParams.set("offset", String(page * cappedSize));
+      const raw = await this.getJson<DataTrade[]>(url.toString());
+      if (raw.length === 0) {break;}
+      for (const t of raw) {
+        out.push(dataToTrade(t));
+        if (out.length >= target) {return out;}
+      }
+      if (raw.length < cappedSize) {break;}
+    }
+    return out;
+  }
+
+  /**
    * Fetch the most recent trades platform-wide.
    * Used to seed the wallet ranker when no wallet list is provided.
    */
   async fetchRecentTrades(limit = 1000): Promise<PolymarketTrade[]> {
-    const url = new URL("/trades", this.cfg.dataBaseUrl);
-    url.searchParams.set("limit", String(limit));
-    const raw = await this.getJson<DataTrade[]>(url.toString());
-    return raw.map(dataToTrade);
+    return this.fetchTradesPaginated({}, limit);
   }
 
   /** Fetch a single wallet's trade history. */
   async fetchWalletTrades(wallet: string, limit = 500): Promise<PolymarketTrade[]> {
-    const url = new URL("/trades", this.cfg.dataBaseUrl);
-    url.searchParams.set("user", wallet);
-    url.searchParams.set("limit", String(limit));
-    const raw = await this.getJson<DataTrade[]>(url.toString());
-    return raw.map(dataToTrade);
+    return this.fetchTradesPaginated({ user: wallet }, limit);
   }
 
   /** Current best bid/ask for a token. */

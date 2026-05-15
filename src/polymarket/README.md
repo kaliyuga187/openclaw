@@ -6,24 +6,46 @@ then mirrors fresh trades from the smart-money cohort.
 Module layout:
 
 - `client.ts` – fetch wrapper around Polymarket Gamma (markets), Data API
-  (trades), and CLOB (midpoint).
+  (trades), and CLOB (midpoint). Pages the Data API in batches of 500 so
+  wallet ranking can see many thousands of trades per run.
 - `wallet-ranker.ts` – pure function that computes per-wallet PnL/win-rate
   from a trade stream using FIFO matching against BUY legs.
 - `trade-filter.ts` – aggregates recent smart-wallet trades into
   `(market, outcome, side)` signals with a confidence score.
 - `executor.ts` – dry-run by default; live trading dynamically imports
   `@polymarket/clob-client` and `ethers` to sign and post orders.
-- `bot.ts` – orchestrator: fetch → rank → filter → signal → execute.
+- `state.ts` – persists open positions to
+  `${OPENCLAW_STATE_DIR:-~/.openclaw}/polymarket/state.json` so re-runs
+  don't double-up and `polymarket positions` can list what's open.
+- `bot.ts` – orchestrator: fetch → rank → filter → skip-if-held → execute → persist.
 - `config.ts` – env-driven `BotConfig` loader with guardrails.
 
 ## Quick start (dry-run)
+
+Once the CLI is built (`pnpm build`), three subcommands are available:
+
+```bash
+openclaw polymarket rank --top 20        # leaderboard of smart wallets
+openclaw polymarket scan                  # signals the bot would take
+openclaw polymarket run                   # full pipeline (dry-run)
+openclaw polymarket positions             # show stored open positions
+```
+
+In dev (no build needed):
+
+```bash
+pnpm polymarket:rank
+pnpm polymarket:scan
+pnpm polymarket -- run --json
+```
+
+Or the standalone runner (no CLI registration required):
 
 ```bash
 pnpm dlx tsx scripts/polymarket-bot.ts --show-wallets
 ```
 
-No keys, no trades placed — the runner prints the smart-wallet leaderboard
-and the signals it *would* have taken.
+No keys, no trades placed — every command above is read-only by default.
 
 ## Live trading
 
